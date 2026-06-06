@@ -1,7 +1,7 @@
 <?php
 require_once 'conn.php';
 
-// 1. Determine the "Active Date" from the calendar, default to today
+// 1. Determine the "Active Date"
 $activeDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 // 2. Handle Form Actions
@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO food_logs (log_date, meal_type, food_name, cals, protein, carbs, fats) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $_POST['log_date'], $_POST['meal_type'], $_POST['food_name'], 
-            (int)$_POST['cals'], (int)$_POST['protein'], (int)$_POST['carbs'], (int)$_POST['fats']
+            (float)$_POST['cals'], (float)$_POST['protein'], (float)$_POST['carbs'], (float)$_POST['fats']
         ]);
         header("Location: index.php?date=" . $_POST['log_date']); 
         exit;
@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO budget (id, cals, protein, carbs, fats) VALUES (1, ?, ?, ?, ?) 
                                ON DUPLICATE KEY UPDATE cals = VALUES(cals), protein = VALUES(protein), carbs = VALUES(carbs), fats = VALUES(fats)");
         $stmt->execute([
-            (int)$_POST['set_cals'], (int)$_POST['set_protein'], (int)$_POST['set_carbs'], (int)$_POST['set_fats']
+            (float)$_POST['set_cals'], (float)$_POST['set_protein'], (float)$_POST['set_carbs'], (float)$_POST['set_fats']
         ]);
         header("Location: index.php?date=" . $activeDate);
         exit;
@@ -37,12 +37,10 @@ $dayQuery = $pdo->prepare("SELECT COALESCE(SUM(cals), 0) as cals, COALESCE(SUM(p
 $dayQuery->execute([$activeDate]);
 $consumed = $dayQuery->fetch();
 
-// Fetch foods and group them by meal type
 $foodsQuery = $pdo->prepare("SELECT * FROM food_logs WHERE log_date = ?");
 $foodsQuery->execute([$activeDate]);
 $rawFoods = $foodsQuery->fetchAll();
 
-// Initialize empty arrays for each meal to ensure they always show up in the UI
 $groupedFoods = [
     'Breakfast' => [],
     'Lunch' => [],
@@ -50,7 +48,6 @@ $groupedFoods = [
     'Snack' => []
 ];
 
-// Sort the fetched foods into their respective meal categories
 foreach ($rawFoods as $food) {
     $groupedFoods[$food['meal_type']][] = $food;
 }
@@ -80,19 +77,19 @@ foreach ($rawFoods as $food) {
             <div class="macro-grid">
                 <div class="macro-box" style="border-left: 4px solid #3b82f6;">
                     <h3>Calories</h3>
-                    <p><?= htmlspecialchars($consumed['cals']) ?> / <?= htmlspecialchars($budget['cals']) ?></p>
+                    <p><?= round((float)$consumed['cals'], 1) ?> / <?= round((float)$budget['cals'], 1) ?></p>
                 </div>
                 <div class="macro-box" style="border-left: 4px solid #ef4444;">
                     <h3>Protein</h3>
-                    <p><?= htmlspecialchars($consumed['protein']) ?>g / <?= htmlspecialchars($budget['protein']) ?>g</p>
+                    <p><?= round((float)$consumed['protein'], 1) ?>g / <?= round((float)$budget['protein'], 1) ?>g</p>
                 </div>
                 <div class="macro-box" style="border-left: 4px solid #10b981;">
                     <h3>Carbs</h3>
-                    <p><?= htmlspecialchars($consumed['carbs']) ?>g / <?= htmlspecialchars($budget['carbs']) ?>g</p>
+                    <p><?= round((float)$consumed['carbs'], 1) ?>g / <?= round((float)$budget['carbs'], 1) ?>g</p>
                 </div>
                 <div class="macro-box" style="border-left: 4px solid #f59e0b;">
                     <h3>Fats</h3>
-                    <p><?= htmlspecialchars($consumed['fats']) ?>g / <?= htmlspecialchars($budget['fats']) ?>g</p>
+                    <p><?= round((float)$consumed['fats'], 1) ?>g / <?= round((float)$budget['fats'], 1) ?>g</p>
                 </div>
             </div>
         </div>
@@ -101,14 +98,11 @@ foreach ($rawFoods as $food) {
             <h2>Food Log</h2>
             
             <?php foreach ($groupedFoods as $mealName => $items): ?>
-                <?php 
-                    // Calculate total calories for this specific meal
-                    $mealCals = array_sum(array_column($items, 'cals')); 
-                ?>
+                <?php $mealCals = array_sum(array_column($items, 'cals')); ?>
                 <div class="meal-section">
                     <div class="meal-header">
                         <h3><?= htmlspecialchars($mealName) ?></h3>
-                        <span class="meal-total"><?= $mealCals ?> cals</span>
+                        <span class="meal-total"><?= round((float)$mealCals, 1) ?> cals</span>
                     </div>
                     
                     <?php if (empty($items)): ?>
@@ -119,10 +113,10 @@ foreach ($rawFoods as $food) {
                                 <li class="food-item">
                                     <div class="food-details">
                                         <span class="food-name"><?= htmlspecialchars($item['food_name']) ?></span>
-                                        <span class="food-macros">P: <?= htmlspecialchars($item['protein']) ?>g | C: <?= htmlspecialchars($item['carbs']) ?>g | F: <?= htmlspecialchars($item['fats']) ?>g</span>
+                                        <span class="food-macros">P: <?= round((float)$item['protein'], 1) ?>g | C: <?= round((float)$item['carbs'], 1) ?>g | F: <?= round((float)$item['fats'], 1) ?>g</span>
                                     </div>
                                     <div class="food-cals-right">
-                                        <?= htmlspecialchars($item['cals']) ?>
+                                        <?= round((float)$item['cals'], 1) ?>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
@@ -159,10 +153,10 @@ foreach ($rawFoods as $food) {
                 </div>
                 
                 <div class="input-row">
-                    <div><label>Calories</label><input type="number" name="cals" min="0" placeholder="0" required></div>
-                    <div><label>Protein (g)</label><input type="number" name="protein" min="0" placeholder="0" required></div>
-                    <div><label>Carbs (g)</label><input type="number" name="carbs" min="0" placeholder="0" required></div>
-                    <div><label>Fats (g)</label><input type="number" name="fats" min="0" placeholder="0" required></div>
+                    <div><label>Calories</label><input type="number" name="cals" min="0" step="0.1" placeholder="0.0" required></div>
+                    <div><label>Protein (g)</label><input type="number" name="protein" min="0" step="0.1" placeholder="0.0" required></div>
+                    <div><label>Carbs (g)</label><input type="number" name="carbs" min="0" step="0.1" placeholder="0.0" required></div>
+                    <div><label>Fats (g)</label><input type="number" name="fats" min="0" step="0.1" placeholder="0.0" required></div>
                 </div>
                 <button type="submit" class="btn">Log Entry</button>
             </form>
@@ -173,10 +167,10 @@ foreach ($rawFoods as $food) {
             <form method="POST" action="index.php">
                 <input type="hidden" name="action" value="update_budget">
                 <div class="input-row">
-                    <div><label>Target Calories</label><input type="number" name="set_cals" value="<?= htmlspecialchars($budget['cals']) ?>" required></div>
-                    <div><label>Target Protein</label><input type="number" name="set_protein" value="<?= htmlspecialchars($budget['protein']) ?>" required></div>
-                    <div><label>Target Carbs</label><input type="number" name="set_carbs" value="<?= htmlspecialchars($budget['carbs']) ?>" required></div>
-                    <div><label>Target Fats</label><input type="number" name="set_fats" value="<?= htmlspecialchars($budget['fats']) ?>" required></div>
+                    <div><label>Target Calories</label><input type="number" name="set_cals" step="0.1" value="<?= round((float)$budget['cals'], 1) ?>" required></div>
+                    <div><label>Target Protein</label><input type="number" name="set_protein" step="0.1" value="<?= round((float)$budget['protein'], 1) ?>" required></div>
+                    <div><label>Target Carbs</label><input type="number" name="set_carbs" step="0.1" value="<?= round((float)$budget['carbs'], 1) ?>" required></div>
+                    <div><label>Target Fats</label><input type="number" name="set_fats" step="0.1" value="<?= round((float)$budget['fats'], 1) ?>" required></div>
                 </div>
                 <button type="submit" class="btn" style="background-color: #475569;">Save New Budget</button>
             </form>
