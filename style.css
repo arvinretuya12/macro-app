@@ -279,3 +279,76 @@ select:focus {
 .btn-delete:hover {
     background-color: #dc2626; /* Darker red on hover */
 }
+
+/* --- CIRCULAR PROGRESS BAR STYLES --- */
+.circular-progress {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    margin: 0 auto 10px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    /* Smooth transition for the progress ring */
+    transition: background 0.3s ease; 
+}
+
+.inner-circle {
+    width: 74px;
+    height: 74px;
+    background-color: #f8fafc; /* Matches the background of macro-box */
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.inner-circle .value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #0f172a;
+    line-height: 1.1;
+}
+
+.inner-circle .budget {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.macro-box {
+    border: none; /* Removed the old colored left border since we have circles now */
+    padding-top: 20px;
+}
+
+/* --- MOBILE RESPONSIVENESS FIX --- */
+@media (max-width: 500px) {
+    /* Stacks columns vertically on small phone screens so inputs do not overlap */
+    .input-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .macro-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .circular-progress {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .inner-circle {
+        width: 56px;
+        height: 56px;
+    }
+
+    .inner-circle .value {
+        font-size: 0.95rem;
+    }
+
+    .inner-circle .budget {
+        font-size: 0.65rem;
+    }
+}
