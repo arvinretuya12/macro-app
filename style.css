@@ -250,3 +250,32 @@ select:focus {
     font-weight: 700;
     color: #0f172a;
 }
+
+/* --- DELETE BUTTON STYLES --- */
+.food-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-delete {
+    background-color: #ef4444; /* Red color matching the Protein badge */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background-color 0.2s;
+    padding-bottom: 2px; /* Vertically centers the 'x' character perfectly */
+}
+
+.btn-delete:hover {
+    background-color: #dc2626; /* Darker red on hover */
+}

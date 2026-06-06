@@ -6,6 +6,8 @@ $activeDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 // 2. Handle Form Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    // Add Food
     if (isset($_POST['action']) && $_POST['action'] === 'add_food') {
         $stmt = $pdo->prepare("INSERT INTO food_logs (log_date, meal_type, food_name, cals, protein, carbs, fats) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
@@ -16,6 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // Delete Food
+    if (isset($_POST['action']) && $_POST['action'] === 'delete_food') {
+        $stmt = $pdo->prepare("DELETE FROM food_logs WHERE id = ?");
+        $stmt->execute([(int)$_POST['log_id']]);
+        header("Location: index.php?date=" . $_POST['return_date']);
+        exit;
+    }
+
+    // Update Budget
     if (isset($_POST['action']) && $_POST['action'] === 'update_budget') {
         $stmt = $pdo->prepare("INSERT INTO budget (id, cals, protein, carbs, fats) VALUES (1, ?, ?, ?, ?) 
                                ON DUPLICATE KEY UPDATE cals = VALUES(cals), protein = VALUES(protein), carbs = VALUES(carbs), fats = VALUES(fats)");
@@ -115,8 +126,16 @@ foreach ($rawFoods as $food) {
                                         <span class="food-name"><?= htmlspecialchars($item['food_name']) ?></span>
                                         <span class="food-macros">P: <?= round((float)$item['protein'], 1) ?>g | C: <?= round((float)$item['carbs'], 1) ?>g | F: <?= round((float)$item['fats'], 1) ?>g</span>
                                     </div>
-                                    <div class="food-cals-right">
-                                        <?= round((float)$item['cals'], 1) ?>
+                                    <div class="food-actions">
+                                        <span class="food-cals-right"><?= round((float)$item['cals'], 1) ?></span>
+                                        
+                                        <form method="POST" action="index.php" style="display: inline; margin: 0; flex-direction: row;">
+                                            <input type="hidden" name="action" value="delete_food">
+                                            <input type="hidden" name="log_id" value="<?= $item['id'] ?>">
+                                            <input type="hidden" name="return_date" value="<?= htmlspecialchars($activeDate) ?>">
+                                            <button type="submit" class="btn-delete" title="Delete entry" onclick="return confirm('Are you sure you want to delete this food entry?');">×</button>
+                                        </form>
+                                        
                                     </div>
                                 </li>
                             <?php endforeach; ?>
