@@ -6,25 +6,16 @@ $activeDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 // 2. Handle Form Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // Add Food
     if (isset($_POST['action']) && $_POST['action'] === 'add_food') {
         $stmt = $pdo->prepare("INSERT INTO food_logs (log_date, meal_type, food_name, cals, protein, carbs, fats) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
-            $_POST['log_date'],
-            $_POST['meal_type'],
-            $_POST['food_name'], 
-            (int)$_POST['cals'], 
-            (int)$_POST['protein'], 
-            (int)$_POST['carbs'], 
-            (int)$_POST['fats']
+            $_POST['log_date'], $_POST['meal_type'], $_POST['food_name'], 
+            (int)$_POST['cals'], (int)$_POST['protein'], (int)$_POST['carbs'], (int)$_POST['fats']
         ]);
-        // Refresh the page back to the day you were looking at
         header("Location: index.php?date=" . $_POST['log_date']); 
         exit;
     }
 
-    // Update Budget
     if (isset($_POST['action']) && $_POST['action'] === 'update_budget') {
         $stmt = $pdo->prepare("INSERT INTO budget (id, cals, protein, carbs, fats) VALUES (1, ?, ?, ?, ?) 
                                ON DUPLICATE KEY UPDATE cals = VALUES(cals), protein = VALUES(protein), carbs = VALUES(carbs), fats = VALUES(fats)");
@@ -40,23 +31,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $budgetQuery = $pdo->query("SELECT * FROM budget WHERE id = 1");
 $budget = $budgetQuery->fetch() ?: ['cals' => 2000, 'protein' => 150, 'carbs' => 200, 'fats' => 65];
 
-// Fetch the SUM of macros for the selected date
 $dayQuery = $pdo->prepare("SELECT COALESCE(SUM(cals), 0) as cals, COALESCE(SUM(protein), 0) as protein, 
                                   COALESCE(SUM(carbs), 0) as carbs, COALESCE(SUM(fats), 0) as fats 
                            FROM food_logs WHERE log_date = ?");
 $dayQuery->execute([$activeDate]);
 $consumed = $dayQuery->fetch();
 
-// Fetch the actual food items eaten on the selected date, sorted by meal type
-$foodsQuery = $pdo->prepare("SELECT * FROM food_logs WHERE log_date = ? ORDER BY 
-    CASE meal_type 
-        WHEN 'Breakfast' THEN 1 
-        WHEN 'Lunch' THEN 2 
-        WHEN 'Dinner' THEN 3 
-        WHEN 'Snack' THEN 4 
-    END");
+// Fetch foods and group them by meal type
+$foodsQuery = $pdo->prepare("SELECT * FROM food_logs WHERE log_date = ?");
 $foodsQuery->execute([$activeDate]);
-$foodItems = $foodsQuery->fetchAll();
+$rawFoods = $foodsQuery->fetchAll();
+
+// Initialize empty arrays for each meal to ensure they always show up in the UI
+$groupedFoods = [
+    'Breakfast' => [],
+    'Lunch' => [],
+    'Dinner' => [],
+    'Snack' => []
+];
+
+// Sort the fetched foods into their respective meal categories
+foreach ($rawFoods as $food) {
+    $groupedFoods[$food['meal_type']][] = $food;
+}
 ?>
 
 <!DOCTYPE html>
@@ -100,6 +97,41 @@ $foodItems = $foodsQuery->fetchAll();
             </div>
         </div>
 
+        <div class="card log-container">
+            <h2>Food Log</h2>
+            
+            <?php foreach ($groupedFoods as $mealName => $items): ?>
+                <?php 
+                    // Calculate total calories for this specific meal
+                    $mealCals = array_sum(array_column($items, 'cals')); 
+                ?>
+                <div class="meal-section">
+                    <div class="meal-header">
+                        <h3><?= htmlspecialchars($mealName) ?></h3>
+                        <span class="meal-total"><?= $mealCals ?> cals</span>
+                    </div>
+                    
+                    <?php if (empty($items)): ?>
+                        <div class="empty-meal">No food logged yet.</div>
+                    <?php else: ?>
+                        <ul class="food-list">
+                            <?php foreach ($items as $item): ?>
+                                <li class="food-item">
+                                    <div class="food-details">
+                                        <span class="food-name"><?= htmlspecialchars($item['food_name']) ?></span>
+                                        <span class="food-macros">P: <?= htmlspecialchars($item['protein']) ?>g | C: <?= htmlspecialchars($item['carbs']) ?>g | F: <?= htmlspecialchars($item['fats']) ?>g</span>
+                                    </div>
+                                    <div class="food-cals-right">
+                                        <?= htmlspecialchars($item['cals']) ?>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
         <div class="card">
             <h2>Log Food Consumed</h2>
             <form method="POST" action="index.php">
@@ -123,7 +155,7 @@ $foodItems = $foodsQuery->fetchAll();
 
                 <div>
                     <label>Food Description</label>
-                    <input type="text" name="food_name" placeholder="e.g., Grilled Chicken Breast" required>
+                    <input type="text" name="food_name" placeholder="e.g., Plain Oats and Chia" required>
                 </div>
                 
                 <div class="input-row">
@@ -134,28 +166,6 @@ $foodItems = $foodsQuery->fetchAll();
                 </div>
                 <button type="submit" class="btn">Log Entry</button>
             </form>
-        </div>
-
-        <div class="card">
-            <h2>Food Log for <?= date('M j', strtotime($activeDate)) ?></h2>
-            <?php if (empty($foodItems)): ?>
-                <p style="color: #64748b; font-size: 0.9rem;">No food logged for this date yet.</p>
-            <?php else: ?>
-                <ul class="food-list">
-                    <?php foreach ($foodItems as $item): ?>
-                        <li class="food-item">
-                            <div class="food-info">
-                                <span class="meal-badge <?= strtolower($item['meal_type']) ?>"><?= htmlspecialchars($item['meal_type']) ?></span>
-                                <strong><?= htmlspecialchars($item['food_name']) ?></strong>
-                            </div>
-                            <div class="food-macros">
-                                <?= htmlspecialchars($item['cals']) ?> kcal 
-                                (P: <?= htmlspecialchars($item['protein']) ?>g | C: <?= htmlspecialchars($item['carbs']) ?>g | F: <?= htmlspecialchars($item['fats']) ?>g)
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
         </div>
 
         <div class="card">
