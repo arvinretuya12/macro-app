@@ -1,0 +1,21 @@
+{
+  "name": "Macros Counter App",
+  "short_name": "Macros Counter",
+  "description": "Counter for tracking macros usage",
+  "start_url": "/index.php",
+  "display": "standalone",
+  "background_color": "#F6F6F6",
+  "theme_color": "#F6F6F6",
+  "icons": [
+    {
+      "src": "logos/macros.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logos/macros.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
